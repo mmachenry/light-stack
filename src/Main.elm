@@ -8,6 +8,7 @@ import Element.Border as Border
 import Element.Input exposing (button)
 import Matrix exposing (Matrix)
 import LightStack
+import Time
 
 main = Browser.element {
     init = init,
@@ -29,7 +30,7 @@ type alias Flags = {
 
 type Msg =
     Reset
-  | Step
+  | Tick
   | PlayPause
   | LightPress (Int, Int)
 
@@ -49,13 +50,16 @@ init flags = ({
   Cmd.none)
 
 subscriptions : Model -> Sub Msg
-subscriptions _ = Sub.none
+subscriptions model =
+  if model.paused
+  then Sub.none
+  else Time.every 1000 (\_->Tick)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
   Reset ->
     ({model | lights = LightStack.eval model.onInit model.lights}, Cmd.none)
-  Step ->
+  Tick ->
     ({model | lights = LightStack.eval model.onTick model.lights}, Cmd.none)
   PlayPause -> ({model|paused = not model.paused}, Cmd.none)
   LightPress location ->
@@ -79,7 +83,7 @@ view model = Element.layout [] (
 controls : Model -> Element Msg
 controls model = row [] [
   button [] {onPress = Just Reset, label = text "Reset"},
-  button [] {onPress = Just Step, label = text "Step"},
+  button [] {onPress = Just Tick, label = text "Step"},
   button [] {onPress = Just PlayPause,
              label = text (if model.paused then "Play" else "Pause")}
   ]
