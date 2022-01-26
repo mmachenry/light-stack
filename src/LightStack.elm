@@ -62,10 +62,12 @@ gol = [
   ]
 
 eval : Program -> Matrix Color -> Matrix Color
-eval program grid = Matrix.indexedMap (evalCellWithNeighbors program grid) grid
+eval program grid =
+  Matrix.indexedMap (evalCellWithNeighbors program grid) grid
 
 evalCellWithNeighbors : Program -> Matrix Color -> (Int, Int) -> Color -> Color
-evalCellWithNeighbors program grid (x,y) c = evalCell program c [] []
+evalCellWithNeighbors program m loc c =
+  evalCell program c (getNeighbors m loc) []
 
 getNeighbors : Matrix Color -> (Int, Int) -> List Color
 getNeighbors m loc =
