@@ -6,3 +6,5 @@ repl-temp-*
 .cache
 dist/
 node_modules/
+# vim
+*.swp
