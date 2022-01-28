@@ -74,11 +74,33 @@ update msg model = case msg of
 -- View --
 ----------
 
-view model = Element.layout [] (
-  column [Element.width Element.fill, Element.height Element.fill] [
-    controls model,
-    lightsView model.lights
-    ])
+view model = Element.layout [] <|
+  row [Element.width Element.fill, Element.height Element.fill] [
+    programEntry model,
+    column [Element.width (Element.fillPortion 5), Element.height Element.fill] [
+      controls model,
+      lightsView model.lights
+      ]
+    ]
+
+programEntry : Model -> Element Msg
+programEntry model = column [
+    Element.height Element.fill,
+    Element.width (Element.fillPortion 2)
+    ]
+  (List.map operationView model.onTick)
+
+operationView : LightStack.Operation -> Element Msg
+operationView op = case op of
+  LightStack.Constant v -> case v of
+    LightStack.VNum n -> el [] <| text ("Constant" ++ String.fromInt n)
+    LightStack.VColor c -> el [] (text "Constant")
+    LightStack.VList l -> el [] (text "List")
+  LightStack.Equal -> el [] (text "Equal")
+  LightStack.This -> el [] (text "This")
+  LightStack.If -> el [] (text "If")
+  LightStack.Neighbors -> el [] (text "Neighbors")
+  LightStack.Sum -> el [] (text "Sum")
 
 controls : Model -> Element Msg
 controls model = row [] [
