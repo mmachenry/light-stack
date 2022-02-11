@@ -7,7 +7,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Input exposing (button)
 import Matrix exposing (Matrix)
-import LightStack
+import LightStack exposing (..)
 import Time
 
 main = Browser.element {
@@ -19,7 +19,7 @@ main = Browser.element {
 
 type alias Model = {
   paused : Bool,
-  lights : Matrix LightStack.Color,
+  lights : Matrix Color,
   onInit : LightStack.Program,
   onTick : LightStack.Program,
   onTouch : LightStack.Program
@@ -37,15 +37,17 @@ type Msg =
 height = 8 
 width = 8
 
-blankLights = Matrix.repeat (height, width) (LightStack.Color 0 0 0)
+blankLights = Matrix.repeat (height, width) Black
 
 init : Flags -> (Model, Cmd Msg)
 init flags = ({
   paused = True,
   lights = blankLights,
-  onInit = [LightStack.Constant LightStack.blue],
-  onTick = LightStack.gol,
-  onTouch = LightStack.toggle LightStack.blue LightStack.cyan
+  onInit = [Constant (VColor Blue)],
+  onTick = gol,
+  onTouch = toggle
+    (VColor Blue)
+    (VColor Cyan)
   },
   Cmd.none)
 
@@ -58,14 +60,14 @@ subscriptions model =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
   Reset ->
-    ({model | lights = LightStack.eval model.onInit model.lights}, Cmd.none)
+    ({model | lights = eval model.onInit model.lights}, Cmd.none)
   Tick ->
-    ({model | lights = LightStack.eval model.onTick model.lights}, Cmd.none)
+    ({model | lights = eval model.onTick model.lights}, Cmd.none)
   PlayPause -> ({model|paused = not model.paused}, Cmd.none)
   LightPress location ->
     case Matrix.get location model.lights of
       Just pixel ->
-        let newPixel = LightStack.evalCellWithNeighbors model.onTouch model.lights location pixel
+        let newPixel = evalCellWithNeighbors model.onTouch model.lights location pixel
         in ({ model | lights = Matrix.set location newPixel model.lights},
             Cmd.none)
       Nothing -> (model, Cmd.none)
@@ -90,17 +92,17 @@ programEntry model = column [
     ]
   (List.map operationView model.onTick)
 
-operationView : LightStack.Operation -> Element Msg
+operationView : Operation -> Element Msg
 operationView op = case op of
-  LightStack.Constant v -> case v of
-    LightStack.VNum n -> el [] <| text ("Constant" ++ String.fromInt n)
-    LightStack.VColor c -> el [] (text "Constant")
-    LightStack.VList l -> el [] (text "List")
-  LightStack.Equal -> el [] (text "Equal")
-  LightStack.This -> el [] (text "This")
-  LightStack.If -> el [] (text "If")
-  LightStack.Neighbors -> el [] (text "Neighbors")
-  LightStack.Sum -> el [] (text "Sum")
+  Constant v -> case v of
+    VNum n -> el [] <| text ("Constant" ++ String.fromInt n)
+    VColor c -> el [] (text "Constant")
+    VList l -> el [] (text "List")
+  Equal -> el [] (text "Equal")
+  This -> el [] (text "This")
+  If -> el [] (text "If")
+  Neighbors -> el [] (text "Neighbors")
+  Sum -> el [] (text "Sum")
 
 controls : Model -> Element Msg
 controls model = row [] [
@@ -110,20 +112,20 @@ controls model = row [] [
              label = text (if model.paused then "Play" else "Pause")}
   ]
 
-lightsView : Matrix LightStack.Color -> Element Msg
+lightsView : Matrix Color -> Element Msg
 lightsView lights =
   column [
     Element.width Element.fill,
     Element.height Element.fill
   ] (List.map2 lightRow (List.range 0 (height-1)) (Matrix.toList lights))
 
-lightRow : Int -> List LightStack.Color -> Element Msg
+lightRow : Int -> List Color -> Element Msg
 lightRow rowIndex lights = row [
   Element.width Element.fill,
   Element.height Element.fill
   ] (List.map2 (lightCell rowIndex) (List.range 0 (width-1)) lights)
 
-lightCell : Int -> Int -> LightStack.Color -> Element Msg
+lightCell : Int -> Int -> Color -> Element Msg
 lightCell rowIndex columnIndex color = button [
   Background.color (lsColorToColor color),
   Border.color (Element.rgb 0.66 0.66 0.66),
@@ -132,10 +134,14 @@ lightCell rowIndex columnIndex color = button [
   Element.height (Element.fillPortion 1)
   ] { onPress = Just (LightPress (columnIndex, rowIndex)), label = text " " }
 
-lsColorToColor : LightStack.Color -> Element.Color
-lsColorToColor c =
-  let maxColor = 1
-  in Element.rgb
-       (toFloat c.red/maxColor)
-       (toFloat c.green/maxColor)
-       (toFloat c.blue/maxColor)
+lsColorToColor : Color -> Element.Color
+lsColorToColor color = case color of
+  Black -> Element.rgb 0 0 0
+  Blue -> Element.rgb 0 0 255
+  Green -> Element.rgb 0 255 0
+  Cyan -> Element.rgb 0 255 255
+  Red -> Element.rgb 255 0 0
+  Magenta -> Element.rgb 255 0 255
+  Yellow -> Element.rgb 255 255 0
+  White -> Element.rgb 255 255 255
+

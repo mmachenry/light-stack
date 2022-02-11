@@ -1,8 +1,3 @@
-{-
-TODO:
-* errors are handled with evaluating to black, reconsider this
--}
-
 module LightStack exposing (..)
 
 import Matrix exposing (Matrix)
@@ -22,21 +17,8 @@ type Value =
   | VNum Int
   | VList (List Value)
  
-type alias Color = {
-  red : Int,
-  green : Int,
-  blue : Int
-  }
-
-red = VColor (Color 1 0 0)
-green = VColor (Color 0 1 0)
-blue = VColor (Color 0 0 1)
-cyan = VColor (Color 0 1 1)
-magenta = VColor (Color 1 0 1)
-yellow = VColor (Color 1 1 0)
-black = VColor (Color 0 0 0)
-white = VColor (Color 1 1 1)
-errorValue = Color 1 0 1
+type Color = Black | Blue | Green | Cyan | Red | Magenta | Yellow | White
+errorValue = Magenta
 
 toggle a b = [
   Constant a,
@@ -48,14 +30,14 @@ toggle a b = [
   ]
 
 gol = [
-  Constant blue,
-  Constant cyan,
-  Neighbors, Constant cyan, Equal, Sum,
+  Constant (VColor Blue),
+  Constant (VColor Cyan),
+  Neighbors, Constant (VColor Cyan), Equal, Sum,
   Constant (VNum 3),
   Equal,
   If,
   This,
-  Neighbors, Constant cyan, Equal, Sum,
+  Neighbors, Constant (VColor Cyan), Equal, Sum,
   Constant (VNum 2),
   Equal,
   If
@@ -79,14 +61,14 @@ getNeighbors m loc =
       east (x, y) =  (inc width x, y)
       west (x, y) = (dec width x, y)
   in [
-    Maybe.withDefault (Color 0 0 0) <| Matrix.get (north (west loc)) m,
-    Maybe.withDefault (Color 0 0 0) <| Matrix.get (north loc) m,
-    Maybe.withDefault (Color 0 0 0) <| Matrix.get (north (east loc)) m,
-    Maybe.withDefault (Color 0 0 0) <| Matrix.get (west loc) m,
-    Maybe.withDefault (Color 0 0 0) <| Matrix.get (east loc) m,
-    Maybe.withDefault (Color 0 0 0) <| Matrix.get (south (west loc)) m,
-    Maybe.withDefault (Color 0 0 0) <| Matrix.get (south loc) m,
-    Maybe.withDefault (Color 0 0 0) <| Matrix.get (south (east loc)) m
+    Maybe.withDefault errorValue <| Matrix.get (north (west loc)) m,
+    Maybe.withDefault errorValue <| Matrix.get (north loc) m,
+    Maybe.withDefault errorValue <| Matrix.get (north (east loc)) m,
+    Maybe.withDefault errorValue <| Matrix.get (west loc) m,
+    Maybe.withDefault errorValue <| Matrix.get (east loc) m,
+    Maybe.withDefault errorValue <| Matrix.get (south (west loc)) m,
+    Maybe.withDefault errorValue <| Matrix.get (south loc) m,
+    Maybe.withDefault errorValue <| Matrix.get (south (east loc)) m
     ]
 
 evalCell : Program -> Color -> List Color -> List Value -> Color
