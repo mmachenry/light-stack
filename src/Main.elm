@@ -46,7 +46,7 @@ init flags = ({
   clockTick = 0,
   lights = blankLights,
   onInit = [Constant Blue],
-  onTick = [ClockTick],
+  onTick = gol,
   onTouch = toggle Blue Cyan
   },
   Cmd.none)
