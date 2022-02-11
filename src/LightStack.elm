@@ -12,6 +12,8 @@ type Operation =
   | If
   | Neighbors
   | Sum
+  | X
+  | Y
 
 type Value =
     VColor Color
@@ -111,6 +113,8 @@ evalStep op context stack = case op of
       (VList l :: restOfStack) ->
         VColor (intToColor (List.foldl (+) 0 (List.map getNum l)))::restOfStack
       _ -> [VColor errorValue]
+  X -> VColor (intToColor (Tuple.first context.location)) :: stack
+  Y -> VColor (intToColor (Tuple.second context.location)) :: stack
 
 applyBinOp : (Value -> Value -> Value) -> List Value -> List Value
 applyBinOp f stack = case stack of

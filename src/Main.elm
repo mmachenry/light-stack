@@ -89,13 +89,17 @@ programEntry model = column [
   (List.map operationView model.onTick)
 
 operationView : Operation -> Element Msg
-operationView op = case op of
-  Constant c -> el [] (text (colorToString c))
-  Equal -> el [] (text "Equal")
-  This -> el [] (text "This")
-  If -> el [] (text "If")
-  Neighbors -> el [] (text "Neighbors")
-  Sum -> el [] (text "Sum")
+operationView op = el [] (text (operationToString op))
+
+operationToString op = case op of
+  Constant c -> colorToString c
+  Equal -> "Equal"
+  This -> "This"
+  If -> "If"
+  Neighbors -> "Neighbors"
+  Sum -> "Sum"
+  X -> "X"
+  Y -> "Y"
 
 controls : Model -> Element Msg
 controls model = row [] [
