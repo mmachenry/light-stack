@@ -17,7 +17,14 @@ type Value =
     VColor Color
   | VList (List Value)
  
+type alias Context = {
+  this : Color,
+  location : (Int, Int),
+  neighbors : List Color
+  }
+
 type Color = Black | Blue | Green | Cyan | Red | Magenta | Yellow | White
+
 errorValue = Magenta
 
 toggle a b = [
@@ -45,11 +52,16 @@ gol = [
 
 eval : Program -> Matrix Color -> Matrix Color
 eval program grid =
-  Matrix.indexedMap (evalCellWithNeighbors program grid) grid
+  Matrix.map
+    (evalCell program [])
+    (Matrix.indexedMap (\l _ -> createContext grid l) grid)
 
-evalCellWithNeighbors : Program -> Matrix Color -> (Int, Int) -> Color -> Color
-evalCellWithNeighbors program m loc c =
-  evalCell program c (getNeighbors m loc) []
+createContext : Matrix Color -> (Int, Int) -> Context
+createContext m loc = {
+  this = Maybe.withDefault errorValue (Matrix.get loc m),
+  location = loc,
+  neighbors = getNeighbors m loc
+  }
 
 getNeighbors : Matrix Color -> (Int, Int) -> List Color
 getNeighbors m loc =
@@ -71,19 +83,19 @@ getNeighbors m loc =
     Maybe.withDefault errorValue <| Matrix.get (south (east loc)) m
     ]
 
-evalCell : Program -> Color -> List Color -> List Value -> Color
-evalCell program color neighbors stack = case program of
+evalCell : Program -> List Value -> Context -> Color
+evalCell program stack context = case program of
   [] -> case stack of
           (VColor c::_) -> c
           _ -> errorValue
   (op::prog) ->
-    evalCell prog color neighbors (evalStep op color neighbors stack)
+    evalCell prog (evalStep op context stack) context
 
-evalStep : Operation -> Color -> List Color -> List Value -> List Value
-evalStep op color neighbors stack = case op of
+evalStep : Operation -> Context -> List Value -> List Value
+evalStep op context stack = case op of
   Constant c -> VColor c::stack
   Equal -> applyBinOp (\a b->if a==b then VColor Blue else VColor Black) stack
-  This -> VColor color::stack
+  This -> VColor context.this::stack
   If ->
     case stack of
       (cond::conseq::alt::restStack) ->
@@ -92,7 +104,7 @@ evalStep op color neighbors stack = case op of
          else alt)::restStack
       _ -> [VColor errorValue]
   Neighbors ->
-    let neighborsValue = VList (List.map VColor neighbors)
+    let neighborsValue = VList (List.map VColor context.neighbors)
     in neighborsValue::stack
   Sum ->
     case stack of

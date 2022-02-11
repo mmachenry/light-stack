@@ -63,12 +63,10 @@ update msg model = case msg of
     ({model | lights = eval model.onTick model.lights}, Cmd.none)
   PlayPause -> ({model|paused = not model.paused}, Cmd.none)
   LightPress location ->
-    case Matrix.get location model.lights of
-      Just pixel ->
-        let newPixel = evalCellWithNeighbors model.onTouch model.lights location pixel
-        in ({ model | lights = Matrix.set location newPixel model.lights},
-            Cmd.none)
-      Nothing -> (model, Cmd.none)
+    let context = createContext model.lights location
+        newPixel = evalCell model.onTouch [] context
+    in ({ model | lights = Matrix.set location newPixel model.lights},
+          Cmd.none)
 
 ----------
 -- View --
