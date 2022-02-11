@@ -14,6 +14,7 @@ type Operation =
   | Sum
   | X
   | Y
+  | ClockTick
 
 type Value =
     VColor Color
@@ -22,7 +23,8 @@ type Value =
 type alias Context = {
   this : Color,
   location : (Int, Int),
-  neighbors : List Color
+  neighbors : List Color,
+  clockTick : Int
   }
 
 type Color = Black | Blue | Green | Cyan | Red | Magenta | Yellow | White
@@ -52,17 +54,18 @@ gol = [
   If
   ]
 
-eval : Program -> Matrix Color -> Matrix Color
-eval program grid =
+eval : Program -> Matrix Color -> Int -> Matrix Color
+eval program grid clockTick =
   Matrix.map
     (evalCell program [])
-    (Matrix.indexedMap (\l _ -> createContext grid l) grid)
+    (Matrix.indexedMap (\l _ -> createContext grid clockTick l) grid)
 
-createContext : Matrix Color -> (Int, Int) -> Context
-createContext m loc = {
+createContext : Matrix Color -> Int -> (Int, Int) -> Context
+createContext m clockTick loc = {
   this = Maybe.withDefault errorValue (Matrix.get loc m),
   location = loc,
-  neighbors = getNeighbors m loc
+  neighbors = getNeighbors m loc,
+  clockTick = clockTick
   }
 
 getNeighbors : Matrix Color -> (Int, Int) -> List Color
@@ -115,6 +118,7 @@ evalStep op context stack = case op of
       _ -> [VColor errorValue]
   X -> VColor (intToColor (Tuple.first context.location)) :: stack
   Y -> VColor (intToColor (Tuple.second context.location)) :: stack
+  ClockTick -> VColor (intToColor (modBy 8 context.clockTick)) :: stack
 
 applyBinOp : (Value -> Value -> Value) -> List Value -> List Value
 applyBinOp f stack = case stack of

@@ -19,6 +19,7 @@ main = Browser.element {
 
 type alias Model = {
   paused : Bool,
+  clockTick : Int,
   lights : Matrix Color,
   onInit : LightStack.Program,
   onTick : LightStack.Program,
@@ -42,9 +43,10 @@ blankLights = Matrix.repeat (height, width) Black
 init : Flags -> (Model, Cmd Msg)
 init flags = ({
   paused = True,
+  clockTick = 0,
   lights = blankLights,
   onInit = [Constant Blue],
-  onTick = gol,
+  onTick = [ClockTick],
   onTouch = toggle Blue Cyan
   },
   Cmd.none)
@@ -58,12 +60,16 @@ subscriptions model =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
   Reset ->
-    ({model | lights = eval model.onInit model.lights}, Cmd.none)
+    ({model | lights = eval model.onInit model.lights 0, clockTick = 0},
+     Cmd.none)
   Tick ->
-    ({model | lights = eval model.onTick model.lights}, Cmd.none)
+    ({ model |
+        lights = eval model.onTick model.lights model.clockTick,
+        clockTick = model.clockTick + 1},
+     Cmd.none)
   PlayPause -> ({model|paused = not model.paused}, Cmd.none)
   LightPress location ->
-    let context = createContext model.lights location
+    let context = createContext model.lights model.clockTick location
         newPixel = evalCell model.onTouch [] context
     in ({ model | lights = Matrix.set location newPixel model.lights},
           Cmd.none)
@@ -100,6 +106,7 @@ operationToString op = case op of
   Sum -> "Sum"
   X -> "X"
   Y -> "Y"
+  ClockTick -> "ClockTick"
 
 controls : Model -> Element Msg
 controls model = row [] [
