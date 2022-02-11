@@ -15,10 +15,11 @@ type Operation =
   | X
   | Y
   | ClockTick
+  | Plus
 
 type Value =
     VColor Color
-  | VList (List Value)
+  | VList (List Color)
  
 type alias Context = {
   this : Color,
@@ -99,7 +100,7 @@ evalCell program stack context = case program of
 evalStep : Operation -> Context -> List Value -> List Value
 evalStep op context stack = case op of
   Constant c -> VColor c::stack
-  Equal -> applyBinOp (\a b->if a==b then VColor Blue else VColor Black) stack
+  Equal -> applyBinOp (\a b->if a==b then Blue else Black) stack
   This -> VColor context.this::stack
   If ->
     case stack of
@@ -109,33 +110,29 @@ evalStep op context stack = case op of
          else alt)::restStack
       _ -> [VColor errorValue]
   Neighbors ->
-    let neighborsValue = VList (List.map VColor context.neighbors)
+    let neighborsValue = VList context.neighbors
     in neighborsValue::stack
   Sum ->
     case stack of
       (VList l :: restOfStack) ->
-        VColor (intToColor (List.foldl (+) 0 (List.map getNum l)))::restOfStack
+        VColor (intToColor (List.foldl (+) 0 (List.map colorToInt l)))::restOfStack
       _ -> [VColor errorValue]
   X -> VColor (intToColor (Tuple.first context.location)) :: stack
   Y -> VColor (intToColor (Tuple.second context.location)) :: stack
   ClockTick -> VColor (intToColor (modBy 8 context.clockTick)) :: stack
+  Plus -> applyBinOp (\a b->intToColor(modBy 8 (colorToInt a + colorToInt b))) stack
 
-applyBinOp : (Value -> Value -> Value) -> List Value -> List Value
+applyBinOp : (Color -> Color -> Color) -> List Value -> List Value
 applyBinOp f stack = case stack of
   (VList a :: VList b :: restOfStack) ->
     VList (List.map2 f a b) :: restOfStack
-  (VList a :: b :: restOfStack) ->
+  (VList a :: VColor b :: restOfStack) ->
     VList (List.map (flip f b) a) :: restOfStack
-  (a :: VList b :: restOfStack) ->
+  (VColor a :: VList b :: restOfStack) ->
     VList (List.map (f a) b) :: restOfStack
-  (a :: b :: restOfStack) ->
-    f a b :: restOfStack
+  (VColor a :: VColor b :: restOfStack) ->
+    VColor (f a b) :: restOfStack
   _ -> stack
-
-getNum : Value -> Int
-getNum v = case v of
-  VColor a -> colorToInt a
-  VList a -> 0 -- FIXME
 
 colorToInt : Color -> Int
 colorToInt color = case color of

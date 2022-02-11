@@ -46,7 +46,7 @@ init flags = ({
   clockTick = 0,
   lights = blankLights,
   onInit = [Constant Blue],
-  onTick = gol,
+  onTick = [X,Y,Plus,ClockTick,Plus],
   onTouch = toggle Blue Cyan
   },
   Cmd.none)
@@ -107,6 +107,8 @@ operationToString op = case op of
   X -> "X"
   Y -> "Y"
   ClockTick -> "ClockTick"
+  Plus -> "Plus"
+  
 
 controls : Model -> Element Msg
 controls model = row [] [
