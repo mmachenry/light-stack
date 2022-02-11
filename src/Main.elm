@@ -45,9 +45,7 @@ init flags = ({
   lights = blankLights,
   onInit = [Constant (VColor Blue)],
   onTick = gol,
-  onTouch = toggle
-    (VColor Blue)
-    (VColor Cyan)
+  onTouch = toggle (VColor Blue) (VColor Cyan)
   },
   Cmd.none)
 
@@ -95,8 +93,7 @@ programEntry model = column [
 operationView : Operation -> Element Msg
 operationView op = case op of
   Constant v -> case v of
-    VNum n -> el [] <| text ("Constant" ++ String.fromInt n)
-    VColor c -> el [] (text "Constant")
+    VColor c -> el [] (text (colorToString c))
     VList l -> el [] (text "List")
   Equal -> el [] (text "Equal")
   This -> el [] (text "This")
@@ -145,3 +142,13 @@ lsColorToColor color = case color of
   Yellow -> Element.rgb 255 255 0
   White -> Element.rgb 255 255 255
 
+colorToString : Color -> String
+colorToString color = case color of
+  Black -> "Black"
+  Blue -> "Blue"
+  Green -> "Green"
+  Cyan -> "Cyan"
+  Red -> "Red"
+  Magenta -> "Magenta"
+  Yellow -> "Yellow"
+  White -> "White"

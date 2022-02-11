@@ -1,6 +1,7 @@
 module LightStack exposing (..)
 
 import Matrix exposing (Matrix)
+import List.Extra
 
 type alias Program  = List Operation
 
@@ -14,7 +15,6 @@ type Operation =
 
 type Value =
     VColor Color
-  | VNum Int
   | VList (List Value)
  
 type Color = Black | Blue | Green | Cyan | Red | Magenta | Yellow | White
@@ -33,12 +33,12 @@ gol = [
   Constant (VColor Blue),
   Constant (VColor Cyan),
   Neighbors, Constant (VColor Cyan), Equal, Sum,
-  Constant (VNum 3),
+  Constant (VColor Cyan),
   Equal,
   If,
   This,
   Neighbors, Constant (VColor Cyan), Equal, Sum,
-  Constant (VNum 2),
+  Constant (VColor Green),
   Equal,
   If
   ]
@@ -82,12 +82,12 @@ evalCell program color neighbors stack = case program of
 evalStep : Operation -> Color -> List Color -> List Value -> List Value
 evalStep op color neighbors stack = case op of
   Constant c -> c::stack
-  Equal -> applyBinOp (\a b->if a==b then VNum 1 else VNum 0) stack
+  Equal -> applyBinOp (\a b->if a==b then VColor Blue else VColor Black) stack
   This -> VColor color::stack
   If ->
     case stack of
       (cond::conseq::alt::restStack) ->
-        (if cond == VNum 1
+        (if cond /= VColor Black
          then conseq
          else alt)::restStack
       _ -> [VColor errorValue]
@@ -96,8 +96,8 @@ evalStep op color neighbors stack = case op of
     in neighborsValue::stack
   Sum ->
     case stack of
-      (VList l :: restOfStack) -> 
-        VNum (List.foldl (+) 0 (List.map getNum l))::restOfStack
+      (VList l :: restOfStack) ->
+        VColor (intToColor (List.foldl (+) 0 (List.map getNum l)))::restOfStack
       _ -> [VColor errorValue]
 
 applyBinOp : (Value -> Value -> Value) -> List Value -> List Value
@@ -114,8 +114,24 @@ applyBinOp f stack = case stack of
 
 getNum : Value -> Int
 getNum v = case v of
-  VNum n -> n
-  VColor a -> 0 -- FIXME
+  VColor a -> colorToInt a
   VList a -> 0 -- FIXME
+
+colorToInt : Color -> Int
+colorToInt color = case color of
+  Black -> 0
+  Blue -> 1
+  Green -> 2
+  Cyan -> 3
+  Red -> 4
+  Magenta -> 5
+  Yellow -> 6
+  White -> 7
+
+intToColor : Int -> Color
+intToColor n = Maybe.withDefault errorValue (
+  List.Extra.getAt
+    (modBy 8 n)
+    [Black, Blue, Green, Cyan, Red, Magenta, Yellow, White])
 
 flip f = (\a b->f b a)
