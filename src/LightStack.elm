@@ -6,7 +6,7 @@ import List.Extra
 type alias Program  = List Operation
 
 type Operation =
-    Constant Value
+    Constant Color
   | Equal
   | This
   | If
@@ -30,15 +30,15 @@ toggle a b = [
   ]
 
 gol = [
-  Constant (VColor Blue),
-  Constant (VColor Cyan),
-  Neighbors, Constant (VColor Cyan), Equal, Sum,
-  Constant (VColor Cyan),
+  Constant Blue,
+  Constant Cyan,
+  Neighbors, Constant Cyan, Equal, Sum,
+  Constant Cyan,
   Equal,
   If,
   This,
-  Neighbors, Constant (VColor Cyan), Equal, Sum,
-  Constant (VColor Green),
+  Neighbors, Constant Cyan, Equal, Sum,
+  Constant Green,
   Equal,
   If
   ]
@@ -81,7 +81,7 @@ evalCell program color neighbors stack = case program of
 
 evalStep : Operation -> Color -> List Color -> List Value -> List Value
 evalStep op color neighbors stack = case op of
-  Constant c -> c::stack
+  Constant c -> VColor c::stack
   Equal -> applyBinOp (\a b->if a==b then VColor Blue else VColor Black) stack
   This -> VColor color::stack
   If ->

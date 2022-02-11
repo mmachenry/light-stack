@@ -43,9 +43,9 @@ init : Flags -> (Model, Cmd Msg)
 init flags = ({
   paused = True,
   lights = blankLights,
-  onInit = [Constant (VColor Blue)],
+  onInit = [Constant Blue],
   onTick = gol,
-  onTouch = toggle (VColor Blue) (VColor Cyan)
+  onTouch = toggle Blue Cyan
   },
   Cmd.none)
 
@@ -92,9 +92,7 @@ programEntry model = column [
 
 operationView : Operation -> Element Msg
 operationView op = case op of
-  Constant v -> case v of
-    VColor c -> el [] (text (colorToString c))
-    VList l -> el [] (text "List")
+  Constant c -> el [] (text (colorToString c))
   Equal -> el [] (text "Equal")
   This -> el [] (text "This")
   If -> el [] (text "If")
