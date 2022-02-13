@@ -47,9 +47,9 @@ init flags = ({
   paused = True,
   clockTick = 0,
   lights = Matrix.repeat (height, width) Black,
-  onInit = [Constant White, Random, Constant White, Random, Equal],
-  onTick = [Constant White, Get],
-  onTouch = toggle Red Magenta
+  onInit = [Constant Blue],
+  onTick = [Constant Yellow, Constant Blue, Constant White, Random, If, Constant Blue, Constant Blue, Constant Yellow, Constant Cyan, Random, If, Constant Green, Get, Constant Yellow, Equal, If, Constant White, Random, If],
+  onTouch = [Constant Yellow]
   },
   Cmd.none)
 
@@ -57,7 +57,7 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
   if model.paused
   then Sub.none
-  else Time.every 1000 (\_->Tick)
+  else Time.every 250 (\_->Tick)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
@@ -71,7 +71,7 @@ update msg model = case msg of
     ({ model |
         lights = eval model.onTick model.lights model.clockTick model.seed,
         clockTick = model.clockTick + 1},
-     Cmd.none)
+     Random.generate NewSeed Random.independentSeed)
   PlayPause -> ({model|paused = not model.paused}, Cmd.none)
   LightPress location ->
     let context = createContext model.lights model.clockTick location

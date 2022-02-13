@@ -116,46 +116,45 @@ evalCell program stack context seed = case program of
 evalStep : Operation -> Context -> Random.Seed -> Stack -> Stack
 evalStep op context seed stack = case op of
   Constant c -> c::stack
-  Equal -> applyBinOp (\a b->(if a==b then Blue else Black)) stack
+  Equal -> applyBinOp stack (\a b->(if a==b then Blue else Black))
   This -> context.this::stack
   If ->
     case stack of
-      (cond::conseq::alt::restStack) ->
+      (cond::conseq::alt::restOfStack) ->
         (if cond /= Black
          then conseq
-         else alt)::restStack
+         else alt)::restOfStack
       _ -> [errorValue]
   X -> intToColor (Tuple.first context.location) :: stack
   Y -> intToColor (Tuple.second context.location) :: stack
   ClockTick -> intToColor (modBy 8 context.clockTick) :: stack
-  Plus -> applyBinOp (\a b->intToColor(modBy 8 (colorToInt a + colorToInt b))) stack
+  Plus ->
+    applyBinOp stack (\a b->
+      intToColor(modBy 8 (colorToInt a + colorToInt b)))
   Count ->
-    case stack of
-      (c::restOfStack) ->
-        intToColor (List.length (List.filter (\i -> i == c) context.neighbors))
-        :: restOfStack
-      _ -> [errorValue]
+    applyUnaryOp stack (\c->
+      intToColor
+        (List.length (List.filter (\i -> i == c) context.neighbors)))
   Get ->
-    case stack of
-      (c::restOfStack) ->
-        Maybe.withDefault
-          errorValue
-          (List.Extra.getAt (colorToInt c) context.neighbors)
-        :: restOfStack
-      _ -> [errorValue]
+    applyUnaryOp stack (\c->
+      Maybe.withDefault
+        errorValue
+        (List.Extra.getAt (colorToInt c) context.neighbors))
   Random ->
-    case stack of
-      (c :: restOfStack) ->
-        let (rando, _) = Random.step (Random.int 0 (colorToInt c)) seed
-        in intToColor rando  :: restOfStack
-      _ -> [errorValue]
+    applyUnaryOp stack (\c->
+      let (rando, _) = Random.step (Random.int 0 (colorToInt c)) seed
+      in intToColor rando)
 
-applyBinOp : (Color -> Color -> Color) -> Stack -> Stack
-applyBinOp f stack = case stack of
+applyBinOp : Stack -> (Color -> Color -> Color) -> Stack
+applyBinOp stack f = case stack of
   (a :: b :: restOfStack) ->
     (f a b) :: restOfStack
   _ -> stack
 
+applyUnaryOp : Stack -> (Color -> Color) -> Stack
+applyUnaryOp stack f = case stack of
+  (c :: restOfStack) -> f c :: restOfStack
+  _ -> stack
 
 colorToInt : Color -> Int
 colorToInt color = case color of
