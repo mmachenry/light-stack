@@ -38,13 +38,11 @@ type Msg =
 height = 8 
 width = 8
 
-blankLights = Matrix.repeat (height, width) Black
-
 init : Flags -> (Model, Cmd Msg)
 init flags = ({
   paused = True,
   clockTick = 0,
-  lights = blankLights,
+  lights = Matrix.repeat (height, width) Black,
   onInit = [Constant Blue],
   onTick = [X,Y,Plus,ClockTick,Plus],
   onTouch = toggle Blue Cyan
@@ -81,7 +79,10 @@ update msg model = case msg of
 view model = Element.layout [] <|
   row [Element.width Element.fill, Element.height Element.fill] [
     programEntry model,
-    column [Element.width (Element.fillPortion 5), Element.height Element.fill] [
+    column [
+      Element.width (Element.fillPortion 5),
+      Element.height Element.fill
+      ] [
       controls model,
       lightsView model.lights
       ]
@@ -109,7 +110,6 @@ operationToString op = case op of
   ClockTick -> "ClockTick"
   Plus -> "Plus"
   
-
 controls : Model -> Element Msg
 controls model = row [] [
   button [] {onPress = Just Reset, label = text "Reset"},
