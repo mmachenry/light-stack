@@ -16,9 +16,9 @@ type Operation =
   | Y
   | ClockTick
   | Plus
-  -- Count
+  | Count
+  | Get
   -- Random
-  -- Get
 
 type alias Context = {
   this : Color,
@@ -40,21 +40,21 @@ toggle a b = [
   If
   ]
 
-{-
 gol = [
   Constant Blue,
   Constant Cyan,
-  Neighbors, Constant Cyan, Equal, Sum,
+  Constant Cyan,
+  Count,
   Constant Cyan,
   Equal,
   If,
   This,
-  Neighbors, Constant Cyan, Equal, Sum,
+  Constant Cyan,
+  Count,
   Constant Green,
   Equal,
   If
   ]
--}
 
 eval : Program -> Matrix Color -> Int -> Matrix Color
 eval program grid clockTick =
@@ -114,6 +114,20 @@ evalStep op context stack = case op of
   Y -> intToColor (Tuple.second context.location) :: stack
   ClockTick -> intToColor (modBy 8 context.clockTick) :: stack
   Plus -> applyBinOp (\a b->intToColor(modBy 8 (colorToInt a + colorToInt b))) stack
+  Count ->
+    case stack of
+      (c::restOfStack) ->
+        intToColor (List.length (List.filter (\i -> i == c) context.neighbors))
+        :: restOfStack
+      _ -> [errorValue]
+  Get ->
+    case stack of
+      (c::restOfStack) ->
+        Maybe.withDefault
+          errorValue
+          (List.Extra.getAt (colorToInt c) context.neighbors)
+        :: restOfStack
+      _ -> [errorValue]
 
 applyBinOp : (Color -> Color -> Color) -> Stack -> Stack
 applyBinOp f stack = case stack of

@@ -44,7 +44,7 @@ init flags = ({
   clockTick = 0,
   lights = Matrix.repeat (height, width) Black,
   onInit = [Constant Blue],
-  onTick = [X,Y,Plus,ClockTick,Plus],
+  onTick = gol,
   onTouch = toggle Blue Cyan
   },
   Cmd.none)
@@ -107,7 +107,9 @@ operationToString op = case op of
   Y -> "Y"
   ClockTick -> "ClockTick"
   Plus -> "Plus"
-  
+  Count -> "Count"
+  Get -> "Get"
+
 controls : Model -> Element Msg
 controls model = row [] [
   button [] {onPress = Just Reset, label = text "Reset"},
