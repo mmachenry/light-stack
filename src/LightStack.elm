@@ -5,22 +5,21 @@ import List.Extra
 
 type alias Program  = List Operation
 
+type alias Stack = List Color
+
 type Operation =
     Constant Color
   | Equal
   | This
   | If
-  | Neighbors
-  | Sum
   | X
   | Y
   | ClockTick
   | Plus
+  -- Count
+  -- Random
+  -- Get
 
-type Value =
-    VColor Color
-  | VList (List Color)
- 
 type alias Context = {
   this : Color,
   location : (Int, Int),
@@ -41,6 +40,7 @@ toggle a b = [
   If
   ]
 
+{-
 gol = [
   Constant Blue,
   Constant Cyan,
@@ -54,6 +54,7 @@ gol = [
   Equal,
   If
   ]
+-}
 
 eval : Program -> Matrix Color -> Int -> Matrix Color
 eval program grid clockTick =
@@ -89,50 +90,37 @@ getNeighbors m loc =
     Maybe.withDefault errorValue <| Matrix.get (south (east loc)) m
     ]
 
-evalCell : Program -> List Value -> Context -> Color
+evalCell : Program -> Stack -> Context -> Color
 evalCell program stack context = case program of
   [] -> case stack of
-          (VColor c::_) -> c
+          (c::_) -> c
           _ -> errorValue
   (op::prog) ->
     evalCell prog (evalStep op context stack) context
 
-evalStep : Operation -> Context -> List Value -> List Value
+evalStep : Operation -> Context -> Stack -> Stack
 evalStep op context stack = case op of
-  Constant c -> VColor c::stack
-  Equal -> applyBinOp (\a b->if a==b then Blue else Black) stack
-  This -> VColor context.this::stack
+  Constant c -> c::stack
+  Equal -> applyBinOp (\a b->(if a==b then Blue else Black)) stack
+  This -> context.this::stack
   If ->
     case stack of
       (cond::conseq::alt::restStack) ->
-        (if cond /= VColor Black
+        (if cond /= Black
          then conseq
          else alt)::restStack
-      _ -> [VColor errorValue]
-  Neighbors ->
-    let neighborsValue = VList context.neighbors
-    in neighborsValue::stack
-  Sum ->
-    case stack of
-      (VList l :: restOfStack) ->
-        VColor (intToColor (List.foldl (+) 0 (List.map colorToInt l)))::restOfStack
-      _ -> [VColor errorValue]
-  X -> VColor (intToColor (Tuple.first context.location)) :: stack
-  Y -> VColor (intToColor (Tuple.second context.location)) :: stack
-  ClockTick -> VColor (intToColor (modBy 8 context.clockTick)) :: stack
+      _ -> [errorValue]
+  X -> intToColor (Tuple.first context.location) :: stack
+  Y -> intToColor (Tuple.second context.location) :: stack
+  ClockTick -> intToColor (modBy 8 context.clockTick) :: stack
   Plus -> applyBinOp (\a b->intToColor(modBy 8 (colorToInt a + colorToInt b))) stack
 
-applyBinOp : (Color -> Color -> Color) -> List Value -> List Value
+applyBinOp : (Color -> Color -> Color) -> Stack -> Stack
 applyBinOp f stack = case stack of
-  (VList a :: VList b :: restOfStack) ->
-    VList (List.map2 f a b) :: restOfStack
-  (VList a :: VColor b :: restOfStack) ->
-    VList (List.map (flip f b) a) :: restOfStack
-  (VColor a :: VList b :: restOfStack) ->
-    VList (List.map (f a) b) :: restOfStack
-  (VColor a :: VColor b :: restOfStack) ->
-    VColor (f a b) :: restOfStack
+  (a :: b :: restOfStack) ->
+    (f a b) :: restOfStack
   _ -> stack
+
 
 colorToInt : Color -> Int
 colorToInt color = case color of

@@ -103,8 +103,6 @@ operationToString op = case op of
   Equal -> "Equal"
   This -> "This"
   If -> "If"
-  Neighbors -> "Neighbors"
-  Sum -> "Sum"
   X -> "X"
   Y -> "Y"
   ClockTick -> "ClockTick"
