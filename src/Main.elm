@@ -9,6 +9,7 @@ import Element.Input exposing (button)
 import Matrix exposing (Matrix)
 import LightStack exposing (..)
 import Time
+import Random
 
 main = Browser.element {
     init = init,
@@ -18,6 +19,7 @@ main = Browser.element {
   }
 
 type alias Model = {
+  seed : Random.Seed,
   paused : Bool,
   clockTick : Int,
   lights : Matrix Color,
@@ -30,7 +32,8 @@ type alias Flags = {
   }
 
 type Msg =
-    Reset
+    NewSeed Random.Seed
+  | Reset
   | Tick
   | PlayPause
   | LightPress (Int, Int)
@@ -40,12 +43,13 @@ width = 8
 
 init : Flags -> (Model, Cmd Msg)
 init flags = ({
+  seed = Random.initialSeed 0,
   paused = True,
   clockTick = 0,
   lights = Matrix.repeat (height, width) Black,
-  onInit = [Constant Blue],
-  onTick = gol,
-  onTouch = toggle Blue Cyan
+  onInit = [Constant White, Random, Constant White, Random, Equal],
+  onTick = [Constant White, Get],
+  onTouch = toggle Red Magenta
   },
   Cmd.none)
 
@@ -57,18 +61,21 @@ subscriptions model =
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
+  NewSeed seed -> ({ model | seed = seed}, Cmd.none)
   Reset ->
-    ({model | lights = eval model.onInit model.lights 0, clockTick = 0},
-     Cmd.none)
+    ({model |
+      lights = eval model.onInit model.lights 0 model.seed,
+      clockTick = 0},
+     Random.generate NewSeed Random.independentSeed)
   Tick ->
     ({ model |
-        lights = eval model.onTick model.lights model.clockTick,
+        lights = eval model.onTick model.lights model.clockTick model.seed,
         clockTick = model.clockTick + 1},
      Cmd.none)
   PlayPause -> ({model|paused = not model.paused}, Cmd.none)
   LightPress location ->
     let context = createContext model.lights model.clockTick location
-        newPixel = evalCell model.onTouch [] context
+        newPixel = evalCell model.onTouch [] context model.seed
     in ({ model | lights = Matrix.set location newPixel model.lights},
           Cmd.none)
 
@@ -109,6 +116,7 @@ operationToString op = case op of
   Plus -> "Plus"
   Count -> "Count"
   Get -> "Get"
+  Random -> "Random"
 
 controls : Model -> Element Msg
 controls model = row [] [

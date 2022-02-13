@@ -2,6 +2,7 @@ module LightStack exposing (..)
 
 import Matrix exposing (Matrix)
 import List.Extra
+import Random
 
 type alias Program  = List Operation
 
@@ -18,7 +19,7 @@ type Operation =
   | Plus
   | Count
   | Get
-  -- Random
+  | Random
 
 type alias Context = {
   this : Color,
@@ -41,26 +42,27 @@ toggle a b = [
   ]
 
 gol = [
-  Constant Blue,
-  Constant Cyan,
-  Constant Cyan,
+  Constant Red,
+  Constant Magenta,
+  Constant Magenta,
   Count,
   Constant Cyan,
   Equal,
   If,
   This,
-  Constant Cyan,
+  Constant Magenta,
   Count,
   Constant Green,
   Equal,
   If
   ]
 
-eval : Program -> Matrix Color -> Int -> Matrix Color
-eval program grid clockTick =
-  Matrix.map
+eval : Program -> Matrix Color -> Int -> Random.Seed -> Matrix Color
+eval program grid clockTick seed =
+  matrixMap2
     (evalCell program [])
     (Matrix.indexedMap (\l _ -> createContext grid clockTick l) grid)
+    (generateRandomSeeds seed)
 
 createContext : Matrix Color -> Int -> (Int, Int) -> Context
 createContext m clockTick loc = {
@@ -77,29 +79,42 @@ getNeighbors m loc =
       dec limit n = if n == 0 then limit-1 else n-1
       north (x, y) = (x, dec height y)
       south (x, y) = (x, inc height y)
-      east (x, y) =  (inc width x, y)
+      east (x, y) = (inc width x, y)
       west (x, y) = (dec width x, y)
   in [
     Maybe.withDefault errorValue <| Matrix.get (north (west loc)) m,
     Maybe.withDefault errorValue <| Matrix.get (north loc) m,
     Maybe.withDefault errorValue <| Matrix.get (north (east loc)) m,
-    Maybe.withDefault errorValue <| Matrix.get (west loc) m,
     Maybe.withDefault errorValue <| Matrix.get (east loc) m,
-    Maybe.withDefault errorValue <| Matrix.get (south (west loc)) m,
+    Maybe.withDefault errorValue <| Matrix.get (south (east loc)) m,
     Maybe.withDefault errorValue <| Matrix.get (south loc) m,
-    Maybe.withDefault errorValue <| Matrix.get (south (east loc)) m
+    Maybe.withDefault errorValue <| Matrix.get (south (west loc)) m,
+    Maybe.withDefault errorValue <| Matrix.get (west loc) m
     ]
 
-evalCell : Program -> Stack -> Context -> Color
-evalCell program stack context = case program of
-  [] -> case stack of
-          (c::_) -> c
-          _ -> errorValue
-  (op::prog) ->
-    evalCell prog (evalStep op context stack) context
+generateRandomSeeds : Random.Seed -> Matrix Random.Seed
+generateRandomSeeds seed =
+  let (seeds, _) = Random.step (Random.list 64 Random.independentSeed) seed
+  in Matrix.fromList (unflatted 8 seeds)
 
-evalStep : Operation -> Context -> Stack -> Stack
-evalStep op context stack = case op of
+unflatted : Int -> List a -> List (List a)
+unflatted width l = case l of
+  [] -> []
+  _ -> (List.take width l) :: unflatted width (List.drop width l)
+
+evalCell : Program -> Stack -> Context -> Random.Seed -> Color
+evalCell program stack context seed = case program of
+  [] ->
+    case stack of
+      (c::_) -> c
+      _ -> errorValue
+  (op::prog) ->
+    let (nextSeed, continueSeed) = Random.step Random.independentSeed seed
+        newStack = evalStep op context nextSeed stack
+    in evalCell prog newStack context continueSeed
+
+evalStep : Operation -> Context -> Random.Seed -> Stack -> Stack
+evalStep op context seed stack = case op of
   Constant c -> c::stack
   Equal -> applyBinOp (\a b->(if a==b then Blue else Black)) stack
   This -> context.this::stack
@@ -128,6 +143,12 @@ evalStep op context stack = case op of
           (List.Extra.getAt (colorToInt c) context.neighbors)
         :: restOfStack
       _ -> [errorValue]
+  Random ->
+    case stack of
+      (c :: restOfStack) ->
+        let (rando, _) = Random.step (Random.int 0 (colorToInt c)) seed
+        in intToColor rando  :: restOfStack
+      _ -> [errorValue]
 
 applyBinOp : (Color -> Color -> Color) -> Stack -> Stack
 applyBinOp f stack = case stack of
@@ -154,3 +175,10 @@ intToColor n = Maybe.withDefault errorValue (
     [Black, Blue, Green, Cyan, Red, Magenta, Yellow, White])
 
 flip f = (\a b->f b a)
+
+matrixMap2 : (a -> b -> c) -> Matrix a -> Matrix b -> Matrix c
+matrixMap2 f m1 m2 =
+  let l1 = Matrix.toList m1
+      l2 = Matrix.toList m2
+  in Matrix.fromList <| 
+     List.map2 (\subl1 subl2->List.map2 f subl1 subl2) l1 l2
