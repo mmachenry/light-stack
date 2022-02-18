@@ -84,7 +84,10 @@ update msg model = case msg of
 ----------
 
 view model = Element.layout [] <|
-  column [Element.width Element.fill, Element.height Element.fill] [
+  column [
+    Element.width Element.fill,
+    Element.height Element.fill
+  ] [
     outputView model,
     inputView model
   ]
@@ -101,34 +104,61 @@ outputView model =
     ]
 
 inputView : Model -> Element Msg
-inputView model = column [
+inputView model =
+  column [
     Element.width (Element.fillPortion 2),
     Element.height (Element.fillPortion 1)
+  ] [
+    blocksView model,
+    row [
+      Element.width Element.fill,
+      Element.height Element.fill,
+      Element.padding 10,
+      Element.spacing 10
     ] [
-  blocksView model,
-  row [
+      programView "On Reset" model.onInit,
+      programView "On Clock Tick" model.onTick,
+      programView "On Touch" model.onTouch
+      ]
+    ]
+
+blocksView : Model -> Element Msg
+blocksView model = column [Element.centerX] [
+  row [ Element.spacing 10, Element.padding 10]
+    (List.map
+      (operationView << Constant)
+      [Black, Blue, Green, Cyan, Red, Magenta, Yellow, White]),
+  row [ Element.spacing 10, Element.padding 10]
+    (List.map operationView [
+      Equal,
+      This,
+      If,
+      X,
+      Y,
+      ClockTick,
+      Plus,
+      Count,
+      Get,
+      Random
+      ])]
+
+programView : String -> LightStack.Program -> Element Msg
+programView label program =
+  column [
     Element.width Element.fill,
     Element.height Element.fill
   ] [
-    programView model.onInit,
-    programView model.onTick,
-    programView model.onTouch
-    ]
-  ]
-
-blocksView : Model -> Element Msg
-blocksView model = el [] (text "blocks")
-
-programView : LightStack.Program -> Element Msg
-programView program = column [
+  el [] (text label),
+  column [
     Border.width 1,
     Element.width Element.fill,
     Element.height Element.fill,
     Element.alignBottom,
     Element.padding 30,
     Element.spacing 20
+    ]
+    (List.map operationView (List.reverse program))
   ]
-  (List.map operationView program)
 
 operationView : Operation -> Element Msg
 operationView op = el [
@@ -137,7 +167,7 @@ operationView op = el [
   Border.rounded 14,
   Border.dashed,
   Border.width 4,
-  Element.padding 3,
+  Element.padding 5,
   Element.alignBottom,
   Element.centerX
   ] (el [Element.centerX] (text (operationToString op)))
