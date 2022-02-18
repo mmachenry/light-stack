@@ -12,10 +12,10 @@ import Time
 import Random
 
 main = Browser.element {
-    init = init,
-    update = update,
-    subscriptions = subscriptions,
-    view = view
+  init = init,
+  update = update,
+  subscriptions = subscriptions,
+  view = view
   }
 
 type alias Model = {
@@ -48,7 +48,7 @@ init flags = ({
   clockTick = 0,
   lights = Matrix.repeat (height, width) Black,
   onInit = [Constant Blue],
-  onTick = [Constant Yellow, Constant Blue, Constant White, Random, If, Constant Blue, Constant Blue, Constant Yellow, Constant Cyan, Random, If, Constant Green, Get, Constant Yellow, Equal, If, Constant White, Random, If],
+  onTick = [Constant Blue, Random],
   onTouch = [Constant Yellow]
   },
   Cmd.none)
@@ -63,9 +63,9 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
   NewSeed seed -> ({ model | seed = seed}, Cmd.none)
   Reset ->
-    ({model |
-      lights = eval model.onInit model.lights 0 model.seed,
-      clockTick = 0},
+    ({ model |
+         lights = eval model.onInit model.lights 0 model.seed,
+         clockTick = 0},
      Random.generate NewSeed Random.independentSeed)
   Tick ->
     ({ model |
@@ -84,26 +84,63 @@ update msg model = case msg of
 ----------
 
 view model = Element.layout [] <|
-  row [Element.width Element.fill, Element.height Element.fill] [
-    programEntry model,
-    column [
-      Element.width (Element.fillPortion 5),
-      Element.height Element.fill
-      ] [
-      controls model,
-      lightsView model.lights
-      ]
+  column [Element.width Element.fill, Element.height Element.fill] [
+    outputView model,
+    inputView model
+  ]
+
+-- Element.width Element.fill
+-- Element.width (Element.fillPortion 5)
+
+outputView : Model -> Element Msg
+outputView model = 
+  column [Element.width (Element.fillPortion 2),
+          Element.height (Element.fillPortion 1)] [
+    controlsView model,
+    lightsView model.lights
     ]
 
-programEntry : Model -> Element Msg
-programEntry model = column [
-    Element.height Element.fill,
-    Element.width (Element.fillPortion 2)
+inputView : Model -> Element Msg
+inputView model = column [
+    Element.width (Element.fillPortion 2),
+    Element.height (Element.fillPortion 1)
+    ] [
+  blocksView model,
+  row [
+    Element.width Element.fill,
+    Element.height Element.fill
+  ] [
+    programView model.onInit,
+    programView model.onTick,
+    programView model.onTouch
     ]
-  (List.map operationView model.onTick)
+  ]
+
+blocksView : Model -> Element Msg
+blocksView model = el [] (text "blocks")
+
+programView : LightStack.Program -> Element Msg
+programView program = column [
+    Border.width 1,
+    Element.width Element.fill,
+    Element.height Element.fill,
+    Element.alignBottom,
+    Element.padding 30,
+    Element.spacing 20
+  ]
+  (List.map operationView program)
 
 operationView : Operation -> Element Msg
-operationView op = el [] (text (operationToString op))
+operationView op = el [
+  Element.width Element.fill,
+  Background.color (Element.rgb 127 127 127),
+  Border.rounded 14,
+  Border.dashed,
+  Border.width 4,
+  Element.padding 3,
+  Element.alignBottom,
+  Element.centerX
+  ] (el [Element.centerX] (text (operationToString op)))
 
 operationToString op = case op of
   Constant c -> colorToString c
@@ -118,13 +155,6 @@ operationToString op = case op of
   Get -> "Get"
   Random -> "Random"
 
-controls : Model -> Element Msg
-controls model = row [] [
-  button [] {onPress = Just Reset, label = text "Reset"},
-  button [] {onPress = Just Tick, label = text "Step"},
-  button [] {onPress = Just PlayPause,
-             label = text (if model.paused then "Play" else "Pause")}
-  ]
 
 lightsView : Matrix Color -> Element Msg
 lightsView lights =
@@ -132,6 +162,15 @@ lightsView lights =
     Element.width Element.fill,
     Element.height Element.fill
   ] (List.map2 lightRow (List.range 0 (height-1)) (Matrix.toList lights))
+
+controlsView : Model -> Element Msg
+controlsView model = row [] [
+  button [] {onPress = Just Reset, label = text "Reset"},
+  button [] {onPress = Just Tick, label = text "Step"},
+  button [] {onPress = Just PlayPause,
+             label = text (if model.paused then "Play" else "Pause")}
+  ]
+
 
 lightRow : Int -> List Color -> Element Msg
 lightRow rowIndex lights = row [
@@ -146,7 +185,10 @@ lightCell rowIndex columnIndex color = button [
   Border.width 5,
   Element.width (Element.fillPortion 1),
   Element.height (Element.fillPortion 1)
-  ] { onPress = Just (LightPress (columnIndex, rowIndex)), label = text " " }
+  ] {
+    onPress = Just (LightPress (columnIndex, rowIndex)),
+    label = text " "
+  }
 
 lsColorToColor : Color -> Element.Color
 lsColorToColor color = case color of

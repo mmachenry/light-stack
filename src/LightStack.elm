@@ -57,6 +57,13 @@ gol = [
   If
   ]
 
+shootingStars = [
+  Constant Yellow, Constant Blue, Constant White, Random, If,
+  Constant Blue, Constant Blue, Constant Yellow, Constant Red,
+  Random, If, Constant Green, Get, Constant Yellow, Equal, If,
+  Constant White, Random, If
+  ]
+
 eval : Program -> Matrix Color -> Int -> Random.Seed -> Matrix Color
 eval program grid clockTick seed =
   matrixMap2
