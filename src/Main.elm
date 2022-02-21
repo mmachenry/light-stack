@@ -24,9 +24,10 @@ type alias Model = {
   paused : Bool,
   clockTick : Int,
   lights : Matrix Color,
-  onInit : LightStack.Program,
+  onReset : LightStack.Program,
   onTick : LightStack.Program,
-  onTouch : LightStack.Program
+  onTouch : LightStack.Program,
+  activeProgram : Event
   }
 
 type alias Flags = {
@@ -39,7 +40,10 @@ type Msg =
   | PlayPause
   | LightPress (Int, Int)
   | AddOp Operation
-  | RemoveOp Int
+  | RemoveOp Event Int
+  | SetActiveProgram Event
+
+type Event = OnReset | OnTick | OnTouch
 
 height = 8 
 width = 8
@@ -50,9 +54,10 @@ init flags = ({
   paused = True,
   clockTick = 0,
   lights = Matrix.repeat (height, width) Black,
-  onInit = [Constant Blue],
-  onTick = [Constant Blue, Random],
-  onTouch = [Constant Yellow]
+  onReset = [Constant Red, Constant Magenta, Constant Blue, Random, If],
+  onTick = gol,
+  onTouch = toggle Red Magenta,
+  activeProgram = OnTick
   },
   Cmd.none)
 
@@ -67,7 +72,7 @@ update msg model = case msg of
   NewSeed seed -> ({ model | seed = seed}, Cmd.none)
   Reset ->
     ({ model |
-         lights = eval model.onInit model.lights 0 model.seed,
+         lights = eval model.onReset model.lights 0 model.seed,
          clockTick = 0},
      Random.generate NewSeed Random.independentSeed)
   Tick ->
@@ -82,76 +87,95 @@ update msg model = case msg of
     in ({ model | lights = Matrix.set location newPixel model.lights},
           Cmd.none)
   AddOp op ->
-    ({ model | onTick = model.onTick ++ [op] }, Cmd.none)
-  RemoveOp i ->
-    ({ model | onTick = List.Extra.removeAt i model.onTick }, Cmd.none)
+    programUpdater model (\p->p++[op])
+  RemoveOp event i ->
+    programUpdater
+      { model | activeProgram = event }
+      (\p->List.Extra.removeAt i p)
+  SetActiveProgram event ->
+    ({ model | activeProgram = event }, Cmd.none)
+
+programUpdater : Model -> (LightStack.Program -> LightStack.Program) -> (Model, Cmd Msg)
+programUpdater model f = case model.activeProgram of
+  OnReset -> ({ model | onReset = f model.onReset }, Cmd.none)
+  OnTick -> ({ model | onTick = f model.onTick }, Cmd.none)
+  OnTouch -> ({ model | onTouch = f model.onTouch }, Cmd.none)
 
 ----------
 -- View --
 ----------
 
 view model = Element.layout [] <|
-  column [
+  row [
+    Element.padding 20,
+    Element.spacing 20,
     Element.width Element.fill,
     Element.height Element.fill
   ] [
-    outputView model,
-    inputView model
-  ]
-
--- Element.width Element.fill
--- Element.width (Element.fillPortion 5)
-
-outputView : Model -> Element Msg
-outputView model = 
-  column [Element.width (Element.fillPortion 2),
-          Element.height (Element.fillPortion 1)] [
-    controlsView model,
-    lightsView model.lights
-    ]
-
-inputView : Model -> Element Msg
-inputView model =
-  column [
-    Element.width (Element.fillPortion 2),
-    Element.height (Element.fillPortion 1)
-  ] [
-    blocksView model,
-    row [
-      Element.width Element.fill,
-      Element.height Element.fill,
-      Element.padding 10,
-      Element.spacing 10
+    column [
+      Element.width (Element.fillPortion 5),
+      Element.height Element.fill
     ] [
-      programView "On Reset" model.onInit,
-      programView "On Clock Tick" model.onTick,
-      programView "On Touch" model.onTouch
+      controlsView model,
+      row [
+        Element.width Element.fill,
+        Element.height (Element.fillPortion 8)
+      ] [
+        lightsView model.lights,
+        blocksView model
+      ],
+      row [
+        Element.padding 20,
+        Element.spacing 20,
+        Element.width Element.fill,
+        Element.height (Element.fillPortion 5)
+      ] [
+        programView model OnReset,
+        programView model OnTouch
       ]
+    ],
+    column [
+      Element.width (Element.fillPortion 2),
+      Element.height Element.fill
+    ] [
+      programView model OnTick
     ]
+  ]
 
 blocksView : Model -> Element Msg
 blocksView model =
-  let row1 = List.map Constant
-               [Black, Blue, Green, Cyan, Red, Magenta, Yellow, White]
-      row2 = [ Equal, This, If, X, Y, ClockTick, Plus, Count, Get, Random]
-      opview o = operationView (operationToString o) (AddOp o)
-  in column [Element.centerX] [
-      row [ Element.spacing 10, Element.padding 10]
-        (List.map opview row1),
-      row [ Element.spacing 10, Element.padding 10]
-        (List.map opview row2)
-     ]
+  let row1 = List.map Constant [Black, Blue, Green, Cyan]
+      row2 = List.map Constant [Red, Magenta, Yellow, White]
+      row3 = [ Equal, This, If, X, Y, ClockTick ]
+      row4 = [ Plus, Count, Get, Random ]
+      opview o = myBtn (operationToString o) (AddOp o)
+  in column [Element.centerX, Element.height (Element.fillPortion 2)] <|
+       List.map (\opRow->
+         row [ Element.spacing 10, Element.padding 10]
+          (List.map opview opRow))
+         [row1,row2,row3,row4]
 
-programView : String -> LightStack.Program -> Element Msg
-programView label program =
-  let opview o i = operationView (operationToString o) (RemoveOp i)
+programView : Model -> Event -> Element Msg
+programView model event =
+  let opview o i = myBtn (operationToString o) (RemoveOp event i)
+      program = case event of
+        OnReset -> model.onReset
+        OnTick -> model.onTick
+        OnTouch -> model.onTouch
+      label = case event of
+        OnReset -> "on Reset"
+        OnTick -> "on Tick"
+        OnTouch -> "on Touch"
   in column [
       Element.width Element.fill,
-      Element.height Element.fill
+      Element.height Element.fill,
+      Border.width 10,
+      Border.color (if event == model.activeProgram
+                    then Element.rgb 0.7 0 0.7
+                    else Element.rgb 0 0 0)
     ] [
-    el [] (text label),
+    myBtn label (SetActiveProgram event),
     column [
-      Border.width 1,
       Element.width Element.fill,
       Element.height Element.fill,
       Element.alignBottom,
@@ -164,8 +188,8 @@ programView label program =
           (List.range 0 (List.length program - 1))))
     ]
 
-operationView : String -> Msg -> Element Msg
-operationView opName msg = el [
+myBtn : String -> Msg -> Element Msg
+myBtn opName msg = button [
   Element.width Element.fill,
   Background.color (Element.rgb 127 127 127),
   Border.rounded 14,
@@ -174,7 +198,7 @@ operationView opName msg = el [
   Element.padding 5,
   Element.alignBottom,
   Element.centerX
-  ] (button [Element.centerX] {onPress = Just msg, label = text opName})
+  ] { onPress = Just msg, label = el [Element.centerX] (text opName) }
 
 operationToString op = case op of
   Constant c -> colorToString c
@@ -198,11 +222,10 @@ lightsView lights =
   ] (List.map2 lightRow (List.range 0 (height-1)) (Matrix.toList lights))
 
 controlsView : Model -> Element Msg
-controlsView model = row [] [
-  button [] {onPress = Just Reset, label = text "Reset"},
-  button [] {onPress = Just Tick, label = text "Step"},
-  button [] {onPress = Just PlayPause,
-             label = text (if model.paused then "Play" else "Pause")}
+controlsView model = row [Element.padding 10, Element.spacing 10, Element.height (Element.fillPortion 1)] [
+  myBtn "Reset" Reset,
+  myBtn "Step" Tick,
+  myBtn (if model.paused then "Play" else "Pause") PlayPause
   ]
 
 
