@@ -10,6 +10,7 @@ import Matrix exposing (Matrix)
 import LightStack exposing (..)
 import Time
 import Random
+import List.Extra
 
 main = Browser.element {
   init = init,
@@ -37,6 +38,8 @@ type Msg =
   | Tick
   | PlayPause
   | LightPress (Int, Int)
+  | AddOp Operation
+  | RemoveOp Int
 
 height = 8 
 width = 8
@@ -78,6 +81,10 @@ update msg model = case msg of
         newPixel = evalCell model.onTouch [] context model.seed
     in ({ model | lights = Matrix.set location newPixel model.lights},
           Cmd.none)
+  AddOp op ->
+    ({ model | onTick = model.onTick ++ [op] }, Cmd.none)
+  RemoveOp i ->
+    ({ model | onTick = List.Extra.removeAt i model.onTick }, Cmd.none)
 
 ----------
 -- View --
@@ -123,45 +130,42 @@ inputView model =
     ]
 
 blocksView : Model -> Element Msg
-blocksView model = column [Element.centerX] [
-  row [ Element.spacing 10, Element.padding 10]
-    (List.map
-      (operationView << Constant)
-      [Black, Blue, Green, Cyan, Red, Magenta, Yellow, White]),
-  row [ Element.spacing 10, Element.padding 10]
-    (List.map operationView [
-      Equal,
-      This,
-      If,
-      X,
-      Y,
-      ClockTick,
-      Plus,
-      Count,
-      Get,
-      Random
-      ])]
+blocksView model =
+  let row1 = List.map Constant
+               [Black, Blue, Green, Cyan, Red, Magenta, Yellow, White]
+      row2 = [ Equal, This, If, X, Y, ClockTick, Plus, Count, Get, Random]
+      opview o = operationView (operationToString o) (AddOp o)
+  in column [Element.centerX] [
+      row [ Element.spacing 10, Element.padding 10]
+        (List.map opview row1),
+      row [ Element.spacing 10, Element.padding 10]
+        (List.map opview row2)
+     ]
 
 programView : String -> LightStack.Program -> Element Msg
 programView label program =
-  column [
-    Element.width Element.fill,
-    Element.height Element.fill
-  ] [
-  el [] (text label),
-  column [
-    Border.width 1,
-    Element.width Element.fill,
-    Element.height Element.fill,
-    Element.alignBottom,
-    Element.padding 30,
-    Element.spacing 20
+  let opview o i = operationView (operationToString o) (RemoveOp i)
+  in column [
+      Element.width Element.fill,
+      Element.height Element.fill
+    ] [
+    el [] (text label),
+    column [
+      Border.width 1,
+      Element.width Element.fill,
+      Element.height Element.fill,
+      Element.alignBottom,
+      Element.padding 30,
+      Element.spacing 20
+      ]
+      (List.reverse
+        (List.map2 opview
+          program
+          (List.range 0 (List.length program - 1))))
     ]
-    (List.map operationView (List.reverse program))
-  ]
 
-operationView : Operation -> Element Msg
-operationView op = el [
+operationView : String -> Msg -> Element Msg
+operationView opName msg = el [
   Element.width Element.fill,
   Background.color (Element.rgb 127 127 127),
   Border.rounded 14,
@@ -170,7 +174,7 @@ operationView op = el [
   Element.padding 5,
   Element.alignBottom,
   Element.centerX
-  ] (el [Element.centerX] (text (operationToString op)))
+  ] (button [Element.centerX] {onPress = Just msg, label = text opName})
 
 operationToString op = case op of
   Constant c -> colorToString c
