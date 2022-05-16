@@ -17,6 +17,7 @@ type Operation =
   | Y
   | ClockTick
   | Plus
+  | Times
   | Count
   | Get
   | Random
@@ -137,7 +138,10 @@ evalStep op context seed stack = case op of
   ClockTick -> intToColor (modBy 8 context.clockTick) :: stack
   Plus ->
     applyBinOp stack (\a b->
-      intToColor(modBy 8 (colorToInt a + colorToInt b)))
+      intToColor (modBy 8 (colorToInt a + colorToInt b)))
+  Times ->
+    applyBinOp stack (\a b->
+      intToColor (modBy 8 (colorToInt a * colorToInt b)))
   Count ->
     applyUnaryOp stack (\c->
       intToColor

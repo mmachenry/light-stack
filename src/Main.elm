@@ -11,6 +11,7 @@ import LightStack exposing (..)
 import Time
 import Random
 import List.Extra
+import Html5.DragDrop
 
 main = Browser.element {
   init = init,
@@ -27,7 +28,8 @@ type alias Model = {
   onReset : LightStack.Program,
   onTick : LightStack.Program,
   onTouch : LightStack.Program,
-  activeProgram : Event
+  activeProgram : Event,
+  dragDrop : Html5.DragDrop.Model DragId DropId
   }
 
 type alias Flags = {
@@ -42,8 +44,13 @@ type Msg =
   | AddOp Operation
   | RemoveOp Event Int
   | SetActiveProgram Event
+  | DragDropMsg (Html5.DragDrop.Msg DragId DropId)
 
 type Event = OnReset | OnTick | OnTouch
+
+type DragId = NewOp Operation | CurrentOp Event Int
+
+type DropId = Program Event
 
 height = 8 
 width = 8
@@ -54,10 +61,11 @@ init flags = ({
   paused = True,
   clockTick = 0,
   lights = Matrix.repeat (height, width) Black,
-  onReset = [Constant Red, Constant Magenta, Constant Blue, Random, If],
-  onTick = gol,
-  onTouch = toggle Red Magenta,
-  activeProgram = OnTick
+  onReset = [],
+  onTick = [],
+  onTouch = [],
+  activeProgram = OnTick,
+  dragDrop = Html5.DragDrop.init
   },
   Cmd.none)
 
@@ -94,6 +102,9 @@ update msg model = case msg of
       (\p->List.Extra.removeAt i p)
   SetActiveProgram event ->
     ({ model | activeProgram = event }, Cmd.none)
+  DragDropMsg dd_msg ->
+    let (dd_model, result) = Html5.DragDrop.update dd_msg model.dragDrop
+    in ({ model | dragDrop = dd_model }, Cmd.none)
 
 programUpdater : Model -> (LightStack.Program -> LightStack.Program) -> (Model, Cmd Msg)
 programUpdater model f = case model.activeProgram of
@@ -146,14 +157,18 @@ blocksView : Model -> Element Msg
 blocksView model =
   let row1 = List.map Constant [Black, Blue, Green, Cyan]
       row2 = List.map Constant [Red, Magenta, Yellow, White]
-      row3 = [ Equal, This, If, X, Y, ClockTick ]
-      row4 = [ Plus, Count, Get, Random ]
-      opview o = myBtn (operationToString o) (AddOp o)
+      row3 = [ This, X, Y, ClockTick]
+      row4 = [ Count, Get, Random ]
+      row5 = [ Equal, Plus, Times ]
+      row6 = [ If ]
+      opview o =
+        -- el [Html5.DragDrop.draggable DragDropMsg (NewOp o)]
+           (myBtn (operationToString o) (AddOp o))
   in column [Element.centerX, Element.height (Element.fillPortion 2)] <|
        List.map (\opRow->
          row [ Element.spacing 10, Element.padding 10]
           (List.map opview opRow))
-         [row1,row2,row3,row4]
+         [row1,row2,row3,row4,row5,row6]
 
 programView : Model -> Event -> Element Msg
 programView model event =
@@ -209,6 +224,7 @@ operationToString op = case op of
   Y -> "Y"
   ClockTick -> "ClockTick"
   Plus -> "Plus"
+  Times -> "Times"
   Count -> "Count"
   Get -> "Get"
   Random -> "Random"
